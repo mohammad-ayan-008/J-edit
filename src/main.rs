@@ -1,8 +1,6 @@
-use std::io;
 use std::io::{stdout, Stdout, Write};
-use crossterm::{cursor, event, style, terminal, ExecutableCommand, QueueableCommand};
+use crossterm::{cursor, style, terminal, ExecutableCommand, QueueableCommand};
 use crossterm::event::{read, Event, KeyCode};
-use crossterm::style::style;
 use crossterm::terminal::EnterAlternateScreen;
 
 enum Action{
@@ -17,10 +15,10 @@ enum Mode{
   Normal,
   Insert
 }
-  fn handle_event(stdout: &mut Stdout,mode: &Mode,ev:crossterm::event::Event)->anyhow::Result<Option<Action>>{
+  fn handle_event(cx: &mut u16,stdout: &mut Stdout,mode: &Mode,ev:crossterm::event::Event)->anyhow::Result<Option<Action>>{
    match mode {
      Mode::Normal => {handle_normal_event(ev)}
-     Mode::Insert => {handle_insert_event(stdout,ev)}
+     Mode::Insert => {handle_insert_event(cx,stdout,ev)}
    }
   }
 
@@ -28,21 +26,24 @@ fn handle_normal_event(event: Event)->anyhow::Result<Option<Action>>{
  match event {
    Event::Key(ev) => match ev.code {
      KeyCode::Char('q')=> { Ok(Some(Action::QUIT))}
-     KeyCode::Up | KeyCode::Char('i')=> { Ok(Some(Action::MOVEUP))},
-     KeyCode::Down | KeyCode::Char('k') => { Ok(Some(Action::MOVEDOWN))}
-     KeyCode::Left | KeyCode::Char('j')=> { Ok(Some(Action::MOVELEFT))}
-     KeyCode::Right | KeyCode::Char('l') => { Ok(Some(Action::MOVERIGHT))}
+     KeyCode::Char('i') => Ok(Some(Action::EntreMode(Mode::Insert))),
+     KeyCode::Up=>  Ok(Some(Action::MOVEUP)),
+     KeyCode::Down  =>  Ok(Some(Action::MOVEDOWN)),
+     KeyCode::Left=>  Ok(Some(Action::MOVELEFT)),
+     KeyCode::Right =>  Ok(Some(Action::MOVERIGHT)),
+
      _=>{Ok(None)}
    }
    _=>Ok(None)
  }
 }
-fn handle_insert_event(stdout: &mut Stdout, event: Event) ->anyhow::Result<Option<Action>>{
+fn handle_insert_event(cx: &mut u16,stdout: &mut Stdout, event: Event) ->anyhow::Result<Option<Action>>{
   match event {
     Event::Key(ev) => match ev.code {
       KeyCode::Esc => Ok(Some(Action::EntreMode(Mode::Normal))),
       KeyCode::Char(c) => {
         stdout.queue(style::Print(c))?;
+        *cx += 1;
         Ok(None)
       }
       _ => Ok(None),
@@ -65,7 +66,7 @@ fn main() -> anyhow::Result<()>{
   loop {
     stdout.queue(cursor::MoveTo(cx,cy))?;
     stdout.flush()?;
-    if let Some(action) =  handle_event(&mut stdout,&mut mode,read()?)?{
+    if let Some(action) =  handle_event(&mut cx,&mut stdout,&mut mode,read()?)?{
       match action {
         Action::QUIT => {
           break;
