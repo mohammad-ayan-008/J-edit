@@ -1,0 +1,8 @@
+[package]
+name = "Jedit"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crossterm = { version = "0.27.0", features = ["event-stream"] }
+anyhow = "1.0.79"
